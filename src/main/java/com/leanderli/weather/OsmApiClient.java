@@ -20,6 +20,10 @@ import java.nio.charset.StandardCharsets;
  * OSM API client for geocoding services.
  * 
  * This client includes the project URL in the user-agent header as required by OSM API usage policy.
+ * 
+ * IMPORTANT: OSM Nominatim usage policy requires a maximum of 1 request per second.
+ * Users of this client MUST implement rate limiting to ensure compliance with this policy.
+ * 
  * If you encounter any issues with API usage, please submit an issue at:
  * https://github.com/leanderli/weather-service-aggregate-project/issues
  */
@@ -47,6 +51,7 @@ public class OsmApiClient implements AutoCloseable {
      * @param query the location query string
      * @return LocationResult containing the search results
      * @throws IOException if the API call fails
+     * @throws ParseException if response parsing fails
      */
     public LocationResult searchLocation(String query) throws IOException, ParseException {
         String encodedQuery = URLEncoder.encode(query, StandardCharsets.UTF_8);
@@ -69,12 +74,19 @@ public class OsmApiClient implements AutoCloseable {
             
             JsonArray results = gson.fromJson(responseBody, JsonArray.class);
             
-            if (results.isEmpty()) {
+            if (results == null || results.isEmpty()) {
                 logger.warn("No results found for query: {}", query);
                 return new LocationResult(null, null, null, query);
             }
             
             JsonObject firstResult = results.get(0).getAsJsonObject();
+            
+            // Safely extract fields with null checks
+            if (!firstResult.has("lat") || !firstResult.has("lon") || !firstResult.has("display_name")) {
+                logger.warn("Incomplete result data for query: {}", query);
+                return new LocationResult(null, null, null, query);
+            }
+            
             String latitude = firstResult.get("lat").getAsString();
             String longitude = firstResult.get("lon").getAsString();
             String displayName = firstResult.get("display_name").getAsString();
@@ -92,6 +104,7 @@ public class OsmApiClient implements AutoCloseable {
      * @param longitude the longitude coordinate
      * @return LocationResult containing the location information
      * @throws IOException if the API call fails
+     * @throws ParseException if response parsing fails
      */
     public LocationResult reverseGeocode(double latitude, double longitude) throws IOException, ParseException {
         String url = String.format("%s/reverse?lat=%f&lon=%f&format=json", 
@@ -113,6 +126,18 @@ public class OsmApiClient implements AutoCloseable {
             }
             
             JsonObject result = gson.fromJson(responseBody, JsonObject.class);
+            
+            // Check if the result contains display_name field
+            if (result == null || !result.has("display_name")) {
+                logger.warn("No location found for coordinates: ({}, {})", latitude, longitude);
+                return new LocationResult(
+                    String.valueOf(latitude), 
+                    String.valueOf(longitude), 
+                    null, 
+                    null
+                );
+            }
+            
             String displayName = result.get("display_name").getAsString();
             
             logger.info("Found location: {}", displayName);

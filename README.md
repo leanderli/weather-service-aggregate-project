@@ -71,9 +71,31 @@ public class Example {
                 System.out.println("Latitude: " + result.getLatitude());
                 System.out.println("Longitude: " + result.getLongitude());
             }
+            
+            // IMPORTANT: Wait at least 1 second between requests to comply with OSM usage policy
+            Thread.sleep(1000);
+            
+            // Make another request...
         }
     }
 }
+```
+
+## Important: Rate Limiting
+
+**The OSM Nominatim API has a usage policy that requires a maximum of 1 request per second.**
+
+When using this client, you MUST:
+- Add delays of at least 1 second between consecutive API calls
+- Implement proper rate limiting in production applications
+- Consider caching results to minimize API calls
+- For high-volume usage, set up your own Nominatim instance
+
+Example of proper rate limiting:
+```java
+osmClient.searchLocation("Location 1");
+Thread.sleep(1000); // Wait 1 second
+osmClient.searchLocation("Location 2");
 ```
 
 ## API Usage Policy

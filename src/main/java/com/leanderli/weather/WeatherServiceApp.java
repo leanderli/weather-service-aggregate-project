@@ -30,26 +30,41 @@ public class WeatherServiceApp {
             OsmApiClient.LocationResult result1 = osmClient.searchLocation("Beijing, China");
             logger.info(result1.toString());
             
+            // Wait 1 second between requests to comply with OSM usage policy
+            Thread.sleep(1000);
+            
             // Example 2: Search for another location
             logger.info("\n=== Example 2: Location Search ===");
             OsmApiClient.LocationResult result2 = osmClient.searchLocation("New York, USA");
             logger.info(result2.toString());
             
+            // Wait 1 second between requests to comply with OSM usage policy
+            Thread.sleep(1000);
+            
             // Example 3: Reverse geocode
             if (result1.isFound()) {
                 logger.info("\n=== Example 3: Reverse Geocoding ===");
-                double lat = Double.parseDouble(result1.getLatitude());
-                double lon = Double.parseDouble(result1.getLongitude());
-                OsmApiClient.LocationResult result3 = osmClient.reverseGeocode(lat, lon);
-                logger.info(result3.toString());
+                try {
+                    double lat = Double.parseDouble(result1.getLatitude());
+                    double lon = Double.parseDouble(result1.getLongitude());
+                    OsmApiClient.LocationResult result3 = osmClient.reverseGeocode(lat, lon);
+                    logger.info(result3.toString());
+                } catch (NumberFormatException e) {
+                    logger.error("Invalid coordinate format: {}", e.getMessage());
+                }
             }
             
             logger.info("\n=== Demo completed successfully ===");
+            logger.info("Note: Delays were added between API calls to comply with OSM usage policy (1 request per second)");
             
         } catch (IOException | ParseException e) {
             logger.error("Error occurred while calling OSM API", e);
             logger.error("If this is an API-related issue, please report it at:");
             logger.error("https://github.com/leanderli/weather-service-aggregate-project/issues");
+            System.exit(1);
+        } catch (InterruptedException e) {
+            logger.error("Demo was interrupted", e);
+            Thread.currentThread().interrupt();
             System.exit(1);
         }
     }
